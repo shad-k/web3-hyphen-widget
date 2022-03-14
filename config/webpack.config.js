@@ -1,12 +1,18 @@
 const path = require("path");
 const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin");
 const ESLintPlugin = require("eslint-webpack-plugin");
+const webpack = require("webpack");
 
 module.exports = {
   mode: "production",
   entry: "./src/index.ts",
   resolve: {
     extensions: [".ts", ".tsx", ".js"],
+    fallback: {
+      buffer: require.resolve("buffer/"),
+      stream: require.resolve("stream-browserify"),
+      assert: require.resolve("assert"),
+    },
   },
   output: {
     filename: "index.js",
@@ -16,7 +22,10 @@ module.exports = {
     globalObject: "this",
     clean: true,
   },
-  externals: ["@biconomy/hyphen"],
+  externals: {
+    react: "react",
+    "react-dom": "react-dom",
+  },
   module: {
     rules: [
       {
@@ -66,6 +75,9 @@ module.exports = {
     }),
     new ESLintPlugin({
       extensions: ["js", "jsx", "ts", "tsx"],
+    }),
+    new webpack.ProvidePlugin({
+      Buffer: ["buffer", "Buffer"],
     }),
   ],
 };

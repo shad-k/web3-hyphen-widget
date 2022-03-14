@@ -1,8 +1,5 @@
 import "./index.css";
 import HyphenBridge from "./HyphenBridge";
-function hello() {
-  console.log("hello");
-}
+import useHyphenBridge from "./useHyphenBridge";
 
-export { hello };
-export { HyphenBridge };
+export { HyphenBridge, useHyphenBridge };
