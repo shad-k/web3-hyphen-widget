@@ -13,6 +13,8 @@ module.exports = {
     filename: "index.js",
     path: path.resolve(__dirname, "../dist"),
     library: "hyphenWidget",
+    libraryTarget: "umd",
+    globalObject: "this",
     clean: true,
   },
   module: {
@@ -30,6 +32,31 @@ module.exports = {
             ],
           },
         },
+      },
+      {
+        test: /\.(js|mjs|jsx|ts|tsx)$/,
+        exclude: /node_modules/,
+        use: {
+          loader: "ts-loader",
+        },
+      },
+      {
+        test: /\.css$/,
+        exclude: /node_modules/,
+        use: [
+          {
+            loader: "style-loader",
+          },
+          {
+            loader: "css-loader",
+            options: {
+              importLoaders: 1,
+            },
+          },
+          {
+            loader: "postcss-loader",
+          },
+        ],
       },
     ],
   },
