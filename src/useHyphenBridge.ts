@@ -1,5 +1,5 @@
 import React from "react";
-import { Hyphen } from "@biconomy/hyphen";
+import { Hyphen, RESPONSE_CODES } from "@biconomy/hyphen";
 import type { Options } from "@biconomy/hyphen/dist/types";
 import { BigNumber, ethers } from "ethers";
 
@@ -24,6 +24,7 @@ type UseHyphenBridgeReturn = {
   tokenAmount: number;
   setTokenAmount: (value: number) => void;
   userTokenBalance: ethers.BigNumber;
+  bridge: () => void;
   destinationChain?: ChainConfig;
   hyphen?: Hyphen;
   currentNetwork?: ethers.providers.Network;
@@ -102,11 +103,163 @@ const useHyphenBridge = (
         sourceChainId,
         destinationChainId as number
       );
-
       setPoolInformation(poolInformation);
     },
     [getTokenBySymbol, hyphenObject, sourceChain, destinationChain]
   );
+
+  const deposit = async (
+    sender: string,
+    tokenAddress: string,
+    depositContractAddress: string,
+    tokenAmount: number,
+    fromChainId: number,
+    toChainId: number
+  ) => {
+    if (!hyphenObject || !selectedToken) {
+      return;
+    }
+
+    try {
+      const depositTx = await hyphenObject.deposit({
+        sender,
+        receiver: sender,
+        tokenAddress,
+        depositContractAddress,
+        amount: ethers.utils
+          .parseUnits(
+            tokenAmount.toString(),
+            selectedToken[fromChainId].decimal
+          )
+          .toHexString(), //Amount to be transferred. Denoted in smallest unit eg in wei",
+        fromChainId: fromChainId.toString(), // chainId of fromChain
+        toChainId: toChainId.toString(), // chainId of toChain
+        useBiconomy: true, // OPTIONAL boolean flag specifying whether to use Biconomy for gas less transaction or not
+      });
+
+      // Wait for 1 block confirmation
+      if (depositTx) {
+        return await depositTx.wait(1);
+      } else {
+        setError("Something went wrong");
+      }
+    } catch (error) {
+      setError("Something went wrong");
+      return Promise.reject("Something went wrong");
+    }
+  };
+
+  const bridge = async () => {
+    setError(undefined);
+    if (!hyphenObject || !selectedToken) {
+      return;
+    }
+
+    try {
+      const fromChainId = sourceChain.chainId;
+      const toChainId = destinationChain?.chainId as number;
+      const tokenAddress = selectedToken
+        ? selectedToken[sourceChain.chainId].address
+        : "";
+      const userAddress = await provider.send("eth_requestAccounts", []);
+      const preTransferStatus = await hyphenObject.preDepositStatus({
+        tokenAddress, // Token address on fromChain which needs to be transferred
+        amount: ethers.utils
+          .parseUnits(
+            tokenAmount.toString(),
+            selectedToken[fromChainId].decimal
+          )
+          .toNumber(), // Amount of tokens to be transferred in smallest unit eg wei
+        fromChainId, // Chain id from where tokens needs to be transferred
+        toChainId, // Chain id where tokens are supposed to be sent
+        userAddress: userAddress[0], // User wallet address who want's to do the transfer
+      });
+
+      if (preTransferStatus.code === RESPONSE_CODES.OK) {
+        // ✅ ALL CHECKS PASSED. Proceed to do deposit transaction
+        return deposit(
+          userAddress[0],
+          tokenAddress,
+          poolInformation.fromLPManagerAddress,
+          tokenAmount,
+          fromChainId,
+          toChainId
+        );
+      } else if (
+        preTransferStatus.code === RESPONSE_CODES.ALLOWANCE_NOT_GIVEN
+      ) {
+        console.log(
+          ethers.utils
+            .parseUnits(
+              tokenAmount.toString(),
+              selectedToken[fromChainId].decimal
+            )
+            .toHexString(),
+          ethers.utils
+            .parseUnits(
+              tokenAmount.toString(),
+              selectedToken[fromChainId].decimal
+            )
+            .toString(),
+          ethers.utils
+            .parseUnits(
+              tokenAmount.toString(),
+              selectedToken[fromChainId].decimal
+            )
+            .toNumber()
+        );
+        // ❌ Not enough apporval from user address on LiquidityPoolManager contract on fromChain
+        const approveTx = await hyphenObject.approveERC20(
+          tokenAddress,
+          poolInformation.fromLPManagerAddress,
+          ethers.utils
+            .parseUnits(
+              tokenAmount.toString(),
+              selectedToken[fromChainId].decimal
+            )
+            .toHexString(),
+          userAddress[0],
+          false,
+          false
+        );
+        // ⏱Wait for the transaction to confirm, pass a number of blocks to wait as param
+        if (approveTx) await approveTx.wait(2);
+        // NOTE: Whenever there is a transaction done via SDK, all responses
+        // will be ethers.js compatible with an async wait() function that
+        // can be called with 'await' to wait for transaction confirmation.
+        // 🆗Now proceed to do the deposit transaction
+        return deposit(
+          userAddress[0],
+          tokenAddress,
+          poolInformation.fromLPManagerAddress,
+          tokenAmount,
+          fromChainId,
+          toChainId
+        );
+      } else if (
+        preTransferStatus.code === RESPONSE_CODES.UNSUPPORTED_NETWORK
+      ) {
+        // ❌ Target chain id is not supported yet
+        setError("Unsupported network");
+        return Promise.reject("Unsupported network");
+      } else if (preTransferStatus.code === RESPONSE_CODES.NO_LIQUIDITY) {
+        // ❌ No liquidity available on target chain for given tokenn
+        setError("No liquidity");
+        return Promise.reject("No liquidity");
+      } else if (preTransferStatus.code === RESPONSE_CODES.UNSUPPORTED_TOKEN) {
+        // ❌ Requested token is not supported on fromChain yet
+        setError("Unsupported token");
+        return Promise.reject("Unsupported token");
+      } else {
+        // ❌ Any other unexpected error
+        setError("Something went wrong");
+        return Promise.reject("Something went wrong");
+      }
+    } catch (error) {
+      setError("Something went wrong");
+      return Promise.reject("Something went wrong");
+    }
+  };
 
   React.useEffect(() => {
     const hyphen = new Hyphen(provider, options);
@@ -186,6 +339,7 @@ const useHyphenBridge = (
     selectedToken,
     poolInformation,
     error,
+    bridge,
     /**
      * changeChain
      */
@@ -193,3 +347,5 @@ const useHyphenBridge = (
 };
 
 export default useHyphenBridge;
+
+// 4454505366662274586

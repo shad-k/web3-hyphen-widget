@@ -29,7 +29,10 @@ const HyphenBridge: React.FC<IHyphenBridgeProps> = ({ provider, options }) => {
     tokenAmount,
     setTokenAmount,
     error,
+    bridge,
   } = useHyphenBridge(provider, options);
+
+  const [inProgress, setInProgress] = React.useState(false);
 
   const availableSourceOptions = React.useMemo(() => {
     return availableSourceChains.map((chainId) => {
@@ -63,6 +66,18 @@ const HyphenBridge: React.FC<IHyphenBridgeProps> = ({ provider, options }) => {
       };
     });
   }, [availableTokens, getTokenBySymbol]);
+
+  const sendBridgingTransaction = async () => {
+    if (inProgress) {
+      return;
+    }
+    setInProgress(true);
+    try {
+      await bridge();
+    } finally {
+      setInProgress(false);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-2 p-6 bg-white shadow-lg rounded-3xl max-w-[600px]">
@@ -122,9 +137,13 @@ const HyphenBridge: React.FC<IHyphenBridgeProps> = ({ provider, options }) => {
         </div>
       </div>
       <button
-        className="bg-hyphen-purple border rounded-xl font-bold text-white w-48 mx-auto px-4 py-2 mt-4 disabled:bg-hyphen-purple/10"
+        className="bg-hyphen-purple border rounded-xl font-bold text-white w-48 mx-auto px-4 py-2 mt-4 disabled:bg-hyphen-purple/10 flex items-center justify-center"
         disabled={!!error || !destinationChain || !tokenAmount}
+        onClick={sendBridgingTransaction}
       >
+        {inProgress && (
+          <div className="border-r border-r-3 border-white animate-spin rounded-r-full h-5 w-5 mr-2"></div>
+        )}
         Bridge
       </button>
       <span className="text-red-500 text-sm mx-auto h-4">{error}</span>
