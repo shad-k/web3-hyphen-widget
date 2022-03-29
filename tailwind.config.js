@@ -1,7 +1,15 @@
 module.exports = {
   content: ["./src/**/*.{html,js,ts,tsx}"],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        hyphen: {
+          purple: {
+            DEFAULT: "#615ccd",
+          },
+        },
+      },
+    },
   },
   plugins: [],
 };
