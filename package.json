@@ -1,6 +1,6 @@
 {
   "name": "@shad-k/hyphen-widget",
-  "version": "1.0.0-alpha.1",
+  "version": "1.0.0-alpha.2",
   "description": "Widget to embed Hyphen bridge into a website/webapp",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
