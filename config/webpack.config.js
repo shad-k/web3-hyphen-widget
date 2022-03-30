@@ -25,6 +25,8 @@ module.exports = {
   externals: {
     react: "react",
     "react-dom": "react-dom",
+    ethers: "ethers",
+    numeral: "numeral",
   },
   module: {
     rules: [
