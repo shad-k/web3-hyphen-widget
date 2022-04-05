@@ -4,6 +4,8 @@
 
 A library written in TypeScript to integrate the [Hyphen Bridge](https://hyphen.biconomy.io/bridge) in React webapps/dapps.
 
+Demo: https://codesandbox.io/s/sleepy-sutherland-cioeb1
+
 ## Installation
 
 `yarn add @shad-k/hyphen-widget`
